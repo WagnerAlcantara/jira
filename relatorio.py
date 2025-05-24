@@ -10,7 +10,9 @@ import os
 load_dotenv()
 
 # Verifica se o arquivo config.json existe antes de tentar abri-lo
-config_file = "config.json"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+config_file = os.path.join(script_dir, "config.json")
+
 if not os.path.exists(config_file):
     print(f"Erro: Arquivo '{config_file}' não encontrado!")
     exit()
@@ -57,17 +59,24 @@ dados = []
 for issue in issues:
     fields = issue["fields"]
     key = issue["key"]
-    reporter = fields.get("reporter", {}).get("displayName", "Sem reporter")
-    assignee = fields.get("assignee", {}).get("displayName", "Sem assignee")
+    reporter_info = fields.get("reporter")
+    reporter = reporter_info.get(
+        "displayName") if reporter_info else "Sem reporter"
+    assignee_info = fields.get("assignee")
+    assignee = assignee_info.get(
+        "displayName") if assignee_info else "Sem assignee"
+
     created = fields["created"]
     summary = fields["summary"]
 
     # Campo customizado
     custom_field = fields.get("customfield_10044", "Não preenchido")
     if isinstance(custom_field, dict):
-        custom_value = custom_field.get("value") or custom_field.get("displayName") or str(custom_field)
+        custom_value = custom_field.get("value") or custom_field.get(
+            "displayName") or str(custom_field)
     elif isinstance(custom_field, list):
-        custom_value = ", ".join([item.get("value") or str(item) for item in custom_field if isinstance(item, dict)])
+        custom_value = ", ".join([item.get("value") or str(
+            item) for item in custom_field if isinstance(item, dict)])
     else:
         custom_value = custom_field
 
@@ -84,13 +93,23 @@ for issue in issues:
 df = pd.DataFrame(dados)
 
 # Formatar data de criação
-df["Data de Criação"] = pd.to_datetime(df["Data de Criação"]).dt.strftime("%d/%m/%Y %H:%M")
+df["Data de Criação"] = pd.to_datetime(
+    df["Data de Criação"]).dt.strftime("%d/%m/%Y %H:%M")
 
 # Criar nome único para o arquivo com timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 filename = f"relatorio_{timestamp}.xlsx"
 
-# Exportar para Excel
-df.to_excel(filename, index=False)
+# Caminho da pasta Relatorio-excel
+output_dir = os.path.join(script_dir, "Relatorio-excel")
 
-print(f"Planilha gerada com sucesso: {filename}")
+# Criar a pasta se não existir
+os.makedirs(output_dir, exist_ok=True)
+
+# Caminho completo do arquivo
+file_path = os.path.join(output_dir, filename)
+
+# Exportar para Excel
+df.to_excel(file_path, index=False)
+
+print(f"Planilha gerada com sucesso: {file_path}")
